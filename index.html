@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dealer OS DOC Audit v1</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#152033;--muted:#64748b;--line:#dbe3ef;--red:#eb0a1e;--green:#16a34a;--amber:#f59e0b;--bad:#dc2626;--blue:#2563eb;--shadow:0 14px 36px rgba(15,23,42,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.top{max-width:1500px;margin:auto;padding:18px 22px;display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-top:4px solid var(--red)}
+h1{font-size:24px;margin:0;letter-spacing:-.03em}.sub{font-size:13px;color:var(--muted);margin-top:4px}.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.control{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:9px 11px;color:var(--text)}
+select,input,button{font:inherit}select,input[type=file],input[type=number]{background:#fff;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:7px 10px}input[type=file]{max-width:260px}button{background:var(--text);color:#fff;border:0;border-radius:12px;padding:10px 14px;cursor:pointer}.wrap{max-width:1500px;margin:auto;padding:22px}.hidden{display:none}.empty{border:1px dashed var(--amber);background:#fffbeb;border-radius:18px;padding:18px;color:#92400e}.grid{display:grid;gap:14px}.cards{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:14px}@media(max-width:900px){.cards{grid-template-columns:1fr}}
+.card,.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.card{padding:16px}.label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{font-size:30px;font-weight:850;letter-spacing:-.04em;margin-top:5px}.small{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.35}.panel{padding:16px;margin-top:18px;overflow:auto}h2{font-size:21px;margin:0 0 12px;letter-spacing:-.02em}h3{margin:0 0 10px}.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:750;border:1px solid var(--line);background:#f8fafc}.ok{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--bad)}
+table{border-collapse:collapse;width:100%;min-width:1050px}th,td{border-bottom:1px solid #e5edf7;padding:9px 8px;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;background:#f8fafc;position:sticky;top:0}td{font-size:13px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}.note{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:12px;color:#475569;line-height:1.45;margin-top:12px}.formula{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;background:#0f172a;color:#e2e8f0;border-radius:14px;padding:12px;white-space:pre-wrap}.sectionbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px}.statusGood{background:#ecfdf5;color:#166534;border-color:#bbf7d0}.statusWarn{background:#fffbeb;color:#92400e;border-color:#fde68a}.statusBad{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+</style>
+</head>
+<body>
+<header><div class="top"><div><h1>Dealer OS — DOC Audit</h1><div class="sub">Financial engine validation. DOC is the single source of truth.</div></div><div class="controls"><div class="control">DOC <input id="docFile" type="file" accept=".xls,.xlsx,.xlsm"></div><div class="control">Month <select id="month"></select></div><div class="control">Day <select id="day"></select></div><button id="copy">Copy Audit</button></div></div></header>
+<div class="wrap"><div id="empty" class="empty">Upload the DOC first. This diagnostic checks the DOC maths before we rebuild the dashboard logic.</div><main id="app" class="hidden">
+<section><div class="sectionbar"><h2 id="title">DOC Audit</h2><span id="fileName" class="pill"></span></div><div id="cards" class="cards"></div><div class="note"><b>Rule:</b> this screen reads the DOC summary lines directly. It does not rebuild financial truth from other reports. Other modules can explain performance, but only the DOC can determine GP, expenses and net profit.</div></section>
+<section class="panel"><h2>1. DOC Actual Reconciliation</h2><table id="actualTable"></table></section>
+<section class="panel"><h2>2. Net Profit Formula</h2><div id="formula" class="formula"></div></section>
+<section class="panel"><h2>3. Run Rate / Forecast Audit</h2><table id="forecastTable"></table><div class="note">Sales/F&I lines use calendar days. Service, Service Other Income and Parts use Aftersales working days from the DOC if available. Expenses are treated as full-month expense unless we later define a separate expense forecast rule.</div></section>
+<section class="panel"><h2>4. Cell Map</h2><table id="cellMap"></table></section>
+</main></div>
+<script>
+let wb=null, fileName='';
+const MONTHS=['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+const $=id=>document.getElementById(id);
+function money(n){if(!isFinite(n))return '£0';return new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP',maximumFractionDigits:0}).format(n)}
+function num(n,d=1){if(!isFinite(n))return '0';return new Intl.NumberFormat('en-GB',{maximumFractionDigits:d}).format(n)}
+function pct(n){if(!isFinite(n))return '0%';return `${Math.round(n*100)}%`}
+function cell(ws,a){return ws&&ws[a] ? (ws[a].v ?? 0) : 0}
+function cellText(ws,a){return ws&&ws[a] ? String(ws[a].v ?? '') : ''}
+function sheetForMonth(month){if(!wb)return null; return wb.Sheets[month] || wb.Sheets[month+'_Table 1'] || wb.Sheets[month+' Table 1'] || wb.Sheets[month.toUpperCase()] || wb.Sheets[month.toLowerCase()] || null}
+function setupMonths(){const sel=$('month'); sel.innerHTML=''; MONTHS.forEach(m=>{ if(sheetForMonth(m)){ const o=document.createElement('option'); o.value=m; o.textContent=m; sel.appendChild(o)} }); const cur=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][new Date().getMonth()]; if([...sel.options].some(o=>o.value===cur)) sel.value=cur; if(!sel.value && sel.options[0]) sel.value=sel.options[0].value;}
+function setupDays(){const ws=sheetForMonth($('month').value); const days=Number(cell(ws,'K2')) || 31; const sel=$('day'); sel.innerHTML=''; for(let i=1;i<=days;i++){const o=document.createElement('option');o.value=i;o.textContent=i;sel.appendChild(o)} sel.value=Math.min(new Date().getDate(),days)}
+function daysInfo(ws,day){const days=Number(cell(ws,'K2'))||31; const salesDays=Number(cell(ws,'M2'))||days; const asDays=Number(cell(ws,'O2'))||businessDaysFromRows(ws,days); const elapsedSales=Math.min(day,salesDays); const elapsedAS=businessDaysFromRows(ws,day); return {days,salesDays,asDays,elapsedSales:Math.max(elapsedSales,1),remainSales:Math.max(salesDays-elapsedSales,0),elapsedAS:Math.max(elapsedAS,1),remainAS:Math.max(asDays-elapsedAS,0)} }
+function businessDaysFromRows(ws,upTo){let c=0; for(let d=1;d<=upTo;d++){const row=36+d*2; const dow=String(cell(ws,'C'+row)||'').toLowerCase(); if(dow && !dow.startsWith('sat') && !dow.startsWith('sun')) c++;} return c||upTo}
+const LINES=[
+ {key:'newRetail', label:'New Car Sales Retail', actual:'G9', plan:'H9', units:'F9', basis:'sales'},
+ {key:'newBonus', label:'New Car Bonuses', actual:'G10', plan:'H10', basis:'sales'},
+ {key:'motability', label:'Motability / Fleet', actual:'G11', plan:'H11', units:'F11', basis:'sales'},
+ {key:'fleetBonus', label:'Fleet Bonuses', actual:'G12', plan:'H12', basis:'sales'},
+ {key:'used', label:'Used Car Sales', actual:'G13', plan:'H13', units:'F13', basis:'sales'},
+ {key:'usedBonus', label:'Used Car Bonuses', actual:'G14', plan:'H14', basis:'sales'},
+ {key:'fi', label:'F&I', actual:'G15', plan:'H15', basis:'sales'},
+ {key:'fiProvision', label:'F&I Provision / House Charge', actual:'G16', plan:'H16', basis:'sales'},
+ {key:'service', label:'Service', actual:'G17', plan:'H17', basis:'aftersales'},
+ {key:'serviceOther', label:'Service Other Income', actual:'G18', plan:'H18', basis:'aftersales'},
+ {key:'parts', label:'Parts', actual:'G19', plan:'H19', basis:'aftersales'},
+ {key:'businessDev', label:'Business Development Standards', actual:'G20', plan:'H20', basis:'sales'},
+ {key:'toyota1st', label:'Toyota 1st', actual:'G21', plan:'H21', basis:'sales'},
+ {key:'totalGP', label:'Total GP', actual:'G23', plan:'H23', basis:'total'},
+ {key:'addBonuses', label:'Add: Bonuses / Trade Add-back', actual:'G25', plan:'H25', basis:'manual'},
+ {key:'expenses', label:'Less: Expenses', actual:'G26', plan:'H26', basis:'expense'},
+ {key:'netProfit', label:'Net Profit', actual:'G28', plan:'H28', basis:'net'}
+];
+function readLines(ws){return LINES.map(l=>({...l, actualValue:Number(cell(ws,l.actual))||0, planValue:Number(cell(ws,l.plan))||0, unitsValue:l.units?(Number(cell(ws,l.units))||0):null, nameInDoc:cellText(ws,l.actual.replace('G','D'))}))}
+function classStatus(ok){return ok?'statusGood':'statusBad'}
+function render(){if(!wb)return; const month=$('month').value, day=Number($('day').value)||1, ws=sheetForMonth(month); const info=daysInfo(ws,day); const lines=readLines(ws); const get=k=>lines.find(x=>x.key===k)?.actualValue||0; const plan=k=>lines.find(x=>x.key===k)?.planValue||0;
+ const componentSum=['newRetail','newBonus','motability','fleetBonus','used','usedBonus','fi','fiProvision','service','serviceOther','parts','businessDev','toyota1st'].reduce((a,k)=>a+get(k),0); const totalGP=get('totalGP'); const add=get('addBonuses'); const exp=get('expenses'); const net=get('netProfit'); const calcNet=totalGP+add+exp; const gpDiff=componentSum-totalGP; const netDiff=calcNet-net;
+ $('empty').classList.add('hidden'); $('app').classList.remove('hidden'); $('title').textContent=`${month} DOC Audit — day ${day}`; $('fileName').textContent=fileName;
+ $('cards').innerHTML=`<div class="card"><div class="label">Net Profit</div><div class="value">${money(net)}</div><div class="small">DOC cell G28</div></div><div class="card"><div class="label">Total GP</div><div class="value">${money(totalGP)}</div><div class="small">DOC cell G23</div></div><div class="card"><div class="label">Add-back</div><div class="value">${money(add)}</div><div class="small">DOC cell G25</div></div><div class="card"><div class="label">Expenses</div><div class="value">${money(exp)}</div><div class="small">DOC cell G26</div></div>`;
+ const actualRows=lines.map(l=>{let status=''; let note=''; if(l.key==='totalGP'){const ok=Math.abs(gpDiff)<1; status=`<span class="pill ${classStatus(ok)}">${ok?'OK':'Check'}</span>`; note=`Component sum ${money(componentSum)}. Difference ${money(gpDiff)}.`} else if(l.key==='netProfit'){const ok=Math.abs(netDiff)<1; status=`<span class="pill ${classStatus(ok)}">${ok?'OK':'Check'}</span>`; note=`Total GP + Add-back + Expenses = ${money(calcNet)}. Difference ${money(netDiff)}.`} else {status='<span class="pill statusGood">Read</span>'; note='Direct DOC read';}
+ return `<tr><td>${l.label}</td><td class="mono">${l.actual}</td><td>${l.unitsValue==null?'—':num(l.unitsValue,0)}</td><td>${money(l.actualValue)}</td><td class="mono">${l.plan}</td><td>${money(l.planValue)}</td><td>${status}</td><td>${note}</td></tr>`}).join('');
+ $('actualTable').innerHTML='<tr><th>Line</th><th>Actual Cell</th><th>Units</th><th>Actual</th><th>Plan Cell</th><th>Plan</th><th>Status</th><th>Audit Note</th></tr>'+actualRows;
+ $('formula').textContent=`Total GP        ${money(totalGP)}  (G23)\nAdd: Bonuses    ${money(add)}  (G25)\nLess: Expenses  ${money(exp)}  (G26)\n--------------------------------\nCalculated NP   ${money(calcNet)}\nDOC Net Profit  ${money(net)}  (G28)\nDifference      ${money(netDiff)}`;
+ const forecastLines=lines.filter(l=>!['totalGP','addBonuses','expenses','netProfit'].includes(l.key)); const frows=forecastLines.map(l=>{let elapsed,total,basisLabel;if(l.basis==='aftersales'){elapsed=info.elapsedAS; total=info.asDays; basisLabel='Aftersales working days'} else {elapsed=info.elapsedSales; total=info.salesDays; basisLabel='Calendar / sales days'} const remain=Math.max(total-elapsed,0); const currentRR=l.actualValue/Math.max(elapsed,1); const requiredRR=(l.planValue-l.actualValue)/Math.max(remain,1); const forecast=currentRR*total; const variance=forecast-l.planValue; const status=variance>=0?'statusGood':variance>-5000?'statusWarn':'statusBad'; return `<tr><td>${l.label}</td><td>${basisLabel}</td><td>${num(elapsed,0)} / ${num(total,0)}</td><td>${money(l.actualValue)}</td><td>${money(l.planValue)}</td><td>${money(currentRR)}</td><td>${money(requiredRR)}</td><td>${money(forecast)}</td><td>${money(variance)}</td><td><span class="pill ${status}">${variance>=0?'Ahead':variance>-5000?'Watch':'Behind'}</span></td></tr>`}).join('');
+ $('forecastTable').innerHTML='<tr><th>Line</th><th>Basis</th><th>Elapsed / Total</th><th>Actual</th><th>Plan</th><th>Current RR</th><th>Required RR</th><th>Simple Forecast</th><th>Forecast Var</th><th>Status</th></tr>'+frows;
+ $('cellMap').innerHTML='<tr><th>Line</th><th>DOC Label Expected</th><th>Actual Cell</th><th>Plan Cell</th><th>Units Cell</th><th>Value Read</th></tr>'+lines.map(l=>`<tr><td>${l.label}</td><td>${l.nameInDoc||'—'}</td><td class="mono">${l.actual}</td><td class="mono">${l.plan}</td><td class="mono">${l.units||'—'}</td><td>${money(l.actualValue)}</td></tr>`).join('');
+}
+$('docFile').addEventListener('change', async e=>{const f=e.target.files[0]; if(!f)return; fileName=f.name; const data=await f.arrayBuffer(); wb=XLSX.read(data,{type:'array',cellDates:true}); setupMonths(); setupDays(); render();});
+$('month').addEventListener('change',()=>{setupDays(); render();}); $('day').addEventListener('change',render); $('copy').addEventListener('click',()=>{const txt=document.body.innerText; navigator.clipboard?.writeText(txt);});
+</script>
+</body></html>
