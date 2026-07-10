@@ -1,14 +1,10 @@
-# Dealer OS Demand Forecast Build
+# Dealer OS — Demand Forecast + Mobile Import Drawer
 
-Upload `index.html` to the root of the GitHub Pages repo.
+Upload `index.html` to the root of the GitHub Pages repository.
 
-## Added
-- Sales Forecast Confidence panel.
-- Demand Forecast from Sales Activity enquiries and order conversion.
-- Comparison against management forecast New Retail + Used units.
-- Demand GP estimate using current New + Used PPU and F&I per unit.
-- Activity League with projected orders and projected GP/F&I contribution.
-
-## Notes
-- DOC remains the financial engine.
-- Sales Activity adds demand intelligence only.
+Changes:
+- Mobile header is no longer sticky.
+- Imports collapse automatically after the DOC loads on a phone.
+- Tap **Change files** to reopen the import drawer.
+- Dashboard scrolls into view after the DOC loads.
+- Desktop functionality and forecast logic are unchanged.
