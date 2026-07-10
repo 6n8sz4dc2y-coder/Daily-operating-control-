@@ -1,10 +1,7 @@
-# Dealer OS — Demand Forecast + Mobile Import Drawer
+# Dealer OS – Trade PPU + Subtotals
 
-Upload `index.html` to the root of the GitHub Pages repository.
-
-Changes:
-- Mobile header is no longer sticky.
-- Imports collapse automatically after the DOC loads on a phone.
-- Tap **Change files** to reopen the import drawer.
-- Dashboard scrolls into view after the DOC loads.
-- Desktop functionality and forecast logic are unchanged.
+- Fixed Trade GP/Unit override so it recalculates Trade forecast GP immediately.
+- Trade remains visible as its own line.
+- Added Used + Trade subtotal.
+- Added New Retail + Motability subtotal.
+- Mobile import collapse retained.
