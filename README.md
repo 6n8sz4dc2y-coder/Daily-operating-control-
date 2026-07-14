@@ -1,9 +1,9 @@
-# Dealer OS – Forecast Bridge + Stock Card Refresh
+# Dealer OS — Collapsible Morning Import
 
 Upload `index.html` to the root of the GitHub Pages repository.
 
-## Changes
-- Net profit forecast now reconciles from Vehicle Sales variance + Aftersales variance + manual bonus/add-back - exceptional cost.
-- Added a visible Net Profit Forecast Bridge in the Financials tab.
-- Used Stock Risk card now separates the 90+ vehicle count from its description.
-- Existing completed-day logic and detailed tabs are retained.
+## Change
+- Added a visible **Hide imports / Show imports** control on desktop and mobile.
+- The collapsed preference is remembered in the browser.
+- On mobile, loading the DOC still collapses the import area automatically and scrolls to the snapshot.
+- No forecast, parser, stock, F&I, or DOC calculation logic was changed.
