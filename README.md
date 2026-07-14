@@ -1,11 +1,9 @@
-# Dealer OS — Aftersales Working-Day Forecast
+# Dealer OS – Forecast Bridge + Stock Card Refresh
 
 Upload `index.html` to the root of the GitHub Pages repository.
 
 ## Changes
-
-- Service and Parts forecasts now use Monday–Friday working days only.
-- Forecast formula is explicit: actual GP ÷ working days completed × total working days.
-- Added an Aftersales Run-Rate Check section showing days complete, days remaining, current GP/day, required GP/day, forecast and variance.
-- Added Service Other Income as a separate line using the same working-day logic.
-- Existing DOC, F&I, Stock, Funnel, ASPI and Service Daily imports remain in place.
+- Net profit forecast now reconciles from Vehicle Sales variance + Aftersales variance + manual bonus/add-back - exceptional cost.
+- Added a visible Net Profit Forecast Bridge in the Financials tab.
+- Used Stock Risk card now separates the 90+ vehicle count from its description.
+- Existing completed-day logic and detailed tabs are retained.
