@@ -1,13 +1,11 @@
-# Dealer OS — Main Page Demand Forecast
+# Dealer OS — New/Used Demand Split
 
 Upload `index.html` to the root of the GitHub Pages repository.
 
-## Added
-- Demand Forecast card on the main Overview page.
-- Shows projected retail units from the Sales Activity report.
-- Compares demand forecast with management New Retail + Used forecast.
-- Shows unit gap and confidence percentage.
-- Click the card to open the Sales Funnel detail.
-- If Sales Activity is not loaded, the card clearly prompts for it.
-
-All existing import, financial, stock, tab and collapsible-header logic is retained.
+Changes:
+- Demand forecast split between New Retail and Used.
+- Separate New and Used confidence scores against management forecast.
+- Projected profit calculated from each segment's forecast units and PPU, plus DOC F&I per eligible retail unit.
+- Toyota Sales Activity export parser now reads New and Used blocks independently.
+- Sales executive names are cleaned and dealer totals/Admin Cleanup are excluded.
+- Activity League now shows New and Used enquiry, order, conversion and projected contribution separately.
